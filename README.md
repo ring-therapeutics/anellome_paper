@@ -19,6 +19,7 @@ Analysis scripts associated with this manuscript require the following software:
    - biopython
    - scipy
    - shapely
+   - baltic
 2. R
    - ggplot2
    - dplyr2
