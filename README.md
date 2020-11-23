@@ -17,7 +17,8 @@ Analysis scripts associated with this manuscript require the following software:
    - jupyterlab
    - matplotlib
    - biopython
-   - numpy
+   - scipy
+   - shapely
 2. R
    - ggplot2
    - dplyr2
@@ -37,7 +38,7 @@ A conda environment has been provided for ease-of-use setup to run all analysis.
 __TODO__: Provide information on all data files or any auxillary files required for analysis.
 
 ## Sequence Data Availability
-Sequence data associated with this manuscript can be found with the following NCBI's BioProject accession: [PRJNA679286](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA679286 )
+Sequence data can be found with the following NCBI's BioProject accession: [PRJNA679286](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA679286)
 
 ## Citation
 __TODO__: Add citation when available
