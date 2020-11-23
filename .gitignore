@@ -231,3 +231,6 @@ Thumbs.db
 
 # EC2 credentials
 *.pem
+
+# VSCode
+.vscode
