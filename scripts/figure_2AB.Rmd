@@ -2,7 +2,9 @@
 title: "figure_2AB"
 author: "Cesar Arze"
 date: "11/23/2020"
-output: html_document
+output:
+ html_document:
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
@@ -35,11 +37,11 @@ library(foreach)
 Read in metadata file containing Pan-anello PCR status of all samples and counts of ORF1s and Anellovirus contigs per sample obtained from AnelloScope sequencing.
 
 ```{r panel_a_setup}
-timeline_metadata_df <- read.csv(here("data", 
-                                      "metadata", 
+timeline_metadata_df <- read.csv(here("data",
+                                      "figure_1",
                                       "RingTx_transfusion1_metadata.csv"), header = TRUE)
 timeline_metadata_df %<>% mutate(transfusion_set = gsub("^(R\\d{2})[T|D]\\d{2}.*", "\\1", RING_ID))
-timeline_metadata_m <- timeline_metadata_df %>% 
+timeline_metadata_m <- timeline_metadata_df %>%
   filter(!(is.na(RING_ID))) %>% 
   distinct(RING_ID, day_of_draw, .keep_all = TRUE) %>%
   melt(id.vars = c("RING_ID", "transfusion_set"), measure.vars = c("day_of_draw")) %>%
@@ -48,13 +50,16 @@ timeline_metadata_m <- timeline_metadata_df %>%
 
 ## Add some other metadata here some breakdowns about our patients (i.e. Sex or Age)
 donor_recip_metadata_df <- read.csv(here("data",
-                                         "metadata",
+                                         "figure_1",
                                          "RingTx_transfusion1_donor_recip_metadata.csv"), header = TRUE)
 donor_recip_metadata_df %<>% mutate(category = case_when(grepl("R\\d{2}D\\d{2}", ID) ~ "donor",
                                                          TRUE ~ "recipient"))
 donor_recip_metadata_df %<>% mutate(subject = gsub("^(R\\d{2})[T|D].*", "\\1", ID))
 donor_recip_metadata_df %<>%   mutate(timepoint = case_when(grepl("D\\d{2}", ID) ~ "donor",
                                TRUE ~ gsub("^R\\d{2}(T\\d{2})", "\\1", ID)))
+
+timeline_metadata_df %>% head()
+donor_recip_metadata_df %>% head()
 ```
 
 ### Panel A
@@ -109,10 +114,9 @@ p2 <- timeline_metadata_m %>%
           legend.text = element_text(size = 15),
           legend.position = "bottom")
 
-g1 <- ggarrange(p1, p2, common.legend = T, legend = "bottom", align = "hv", ncol = 2, widths = c(.2, .8)) 
-ggsave(here("manuscript",
-           "figures",
-           "fig2a.pdf"), plot = g1, units = "mm", height = 160, width = 448, scale = 1)
+g1 <- ggarrange(p1, p2, common.legend = T, legend = "bottom", align = "hv", ncol = 2, widths = c(.2, .8))
+ggsave(here("figures",
+            "fig2a.pdf"), plot = g1, units = "mm", height = 160, width = 448, scale = 1)
 g1
 ```
 
@@ -120,7 +124,7 @@ g1
 
 ``` {r panel_B_setup echo=FALSE}
 transfusion_1_contig_orf1_stats <- read.csv(here("data",
-                                                 "metadata",
+                                                 "figure_1",
                                                  "RingTx_transfusion1_contig_and_orf_stats.csv"), header = TRUE)
 transfusion_1_contig_orf1_stats %<>% mutate(transf_set = gsub("^(R\\d{2})[T|D].*", "\\1", RING_ID))
 transfusion_1_contig_orf1_stats %<>% mutate(subject = case_when(grepl("R\\d{2}D\\d{2}", RING_ID) ~ RING_ID,
@@ -135,8 +139,8 @@ transfusion_1_contig_orf1_stats %>% head()
 
 ```{r donor_recipient_orf1_counts echo=FALSE, fig.height=6, fig.width=18}
 
-color_palette <- c("#3B4992", "#004512", "#E71E26", "#F59999", 
-                   "#F58020", "#CAB3D6", "#FDBF6F", "#B3D88B", 
+color_palette <- c("#3B4992", "#004512", "#E71E26", "#F59999",
+                   "#F58020", "#CAB3D6", "#FDBF6F", "#B3D88B",
                    "#1979B5", "#B15B29", "#F9F49B", "#33A148",
                    "#6B3F98", "#A5CEE4")
 
@@ -170,7 +174,7 @@ recip_histo_p_high <- transfusion_1_contig_orf1_stats %>%
   geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
   theme_fivethirtyeight() +
   scale_fill_manual(values = color_palette) +
-  coord_cartesian(xlim = c(130, 300)) + 
+  coord_cartesian(xlim = c(130, 300)) +
   xlab("No. of Anello Strains") +
   ylab("Recipient") +
   theme(plot.background = element_rect(fill = "white"),
@@ -189,8 +193,8 @@ recip_histo_p_high <- transfusion_1_contig_orf1_stats %>%
 
 recip_orf_count_p <- ggarrange(recip_histo_p_low, recip_histo_p_high, align = "h", widths = c(.6, .4))
 
-dcolor_palette <- c("#3B4992", "#E71E26", "#F59999", 
-                    "#F58020", "#CAB3D6", 
+dcolor_palette <- c("#3B4992", "#E71E26", "#F59999",
+                    "#F58020", "#CAB3D6",
                     "#1979B5", "#B15B29", "#33A148",
                     "#6B3F98", "#A5CEE4")
 
@@ -243,8 +247,7 @@ donor_orf_count_p <- ggarrange(donor_histo_p_low, donor_histo_p_high, align = "h
 
 g2 <- ggarrange(donor_orf_conunt_p, recip_orf_count_p, align = "h", widths = c(.3, .7))
 
-ggsave(here("manuscript",
-            "figures",
-            "fig2b.pdf"), plot = g2, units = "mm", height = 172, width = 441, device = cairo_pdf, scale = 1)     
+ggsave(here("figures",
+            "fig2b.pdf"), plot = g2, units = "mm", height = 172, width = 441, device = cairo_pdf, scale = 1)
 g2
 ```
