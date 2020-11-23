@@ -210,7 +210,6 @@ cython_debug/
 *.jar
 *.rar
 *.tar
-*.zip
 
 # Logs and databases
 *.log
