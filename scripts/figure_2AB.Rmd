@@ -1,0 +1,250 @@
+---
+title: "figure_2AB"
+author: "Cesar Arze"
+date: "11/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(ggthemes)
+library(ggsci)
+library(RColorBrewer)
+library(here)
+library(stringr)
+library(iterators)
+library(magrittr)
+library(cowplot)
+library(viridis)
+library(ggsci)
+library(magrittr)
+library(ggridges)
+library(foreach)
+```
+
+## Fig 2: Characterization of the Personal Anellome (Panel A)
+*Overview of study design. Fifteen transfusion recipients paired with one or more blood donors  received a blood transfusion following surgery. Recipient samples were collected post-transfusion over a period of 280 days. Pan-anellovirus PCR-positive samples in red.*
+
+
+### Setup
+***
+Read in metadata file containing Pan-anello PCR status of all samples and counts of ORF1s and Anellovirus contigs per sample obtained from AnelloScope sequencing.
+
+```{r panel_a_setup}
+timeline_metadata_df <- read.csv(here("data", 
+                                      "metadata", 
+                                      "RingTx_transfusion1_metadata.csv"), header = TRUE)
+timeline_metadata_df %<>% mutate(transfusion_set = gsub("^(R\\d{2})[T|D]\\d{2}.*", "\\1", RING_ID))
+timeline_metadata_m <- timeline_metadata_df %>% 
+  filter(!(is.na(RING_ID))) %>% 
+  distinct(RING_ID, day_of_draw, .keep_all = TRUE) %>%
+  melt(id.vars = c("RING_ID", "transfusion_set"), measure.vars = c("day_of_draw")) %>%
+  mutate(timepoint = case_when(grepl("D\\d{2}", RING_ID) ~ "donor",
+                               TRUE ~ gsub("^R\\d{2}(T\\d{2})", "\\1", RING_ID)))
+
+## Add some other metadata here some breakdowns about our patients (i.e. Sex or Age)
+donor_recip_metadata_df <- read.csv(here("data",
+                                         "metadata",
+                                         "RingTx_transfusion1_donor_recip_metadata.csv"), header = TRUE)
+donor_recip_metadata_df %<>% mutate(category = case_when(grepl("R\\d{2}D\\d{2}", ID) ~ "donor",
+                                                         TRUE ~ "recipient"))
+donor_recip_metadata_df %<>% mutate(subject = gsub("^(R\\d{2})[T|D].*", "\\1", ID))
+donor_recip_metadata_df %<>%   mutate(timepoint = case_when(grepl("D\\d{2}", ID) ~ "donor",
+                               TRUE ~ gsub("^R\\d{2}(T\\d{2})", "\\1", ID)))
+```
+
+### Panel A
+
+```{r anello_pcr_status, echo=FALSE, fig.height=6, fig.width=18}
+
+p1 <- donor_recip_metadata_df %>% 
+  mutate(timepoint = gsub("^R\\d{2}([T|D]\\d{2}).*", "\\1", ID)) %>%
+  filter(grepl("D\\d{2}", timepoint)) %>%
+  mutate(subject = gsub("R(\\d{2})", "D\\1", subject)) %>%
+  group_by(subject) %>%
+  ggplot(aes(x = timepoint, y = subject, color = Anello.Status)) +
+    geom_point(size = 5) +
+    theme_fivethirtyeight() +
+    ylab("Donors") + 
+    scale_color_aaas(name = "Anellovirus PCR Status") +
+    theme(plot.background = element_rect(fill = "white"),
+          panel.background = element_rect(fill = "white"),
+          strip.background.x = element_rect(fill = "white"),
+          legend.background = element_rect(fill = "white"),
+          legend.key = element_rect(fill = "white"),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size = 16),
+          axis.title.y = element_text(size = 18, vjust = 3),
+          axis.title.x = element_blank(),
+          legend.title = element_text(size = 15),
+          legend.text = element_text(size = 15),
+          legend.position = "none",
+          plot.margin = unit(c(0.5, 0, 0, 0), "cm"))
+
+p2 <- timeline_metadata_m %>%
+  filter(timepoint != "donor") %>%
+  left_join(donor_recip_metadata_df, by = c("RING_ID" = "ID")) %>%
+  ggplot(aes(x = value, y = transfusion_set, color = Anello.Status)) +
+    geom_point(size = 6) +
+    xlab("Days Since Transfusion") +
+    ylab("Recipients") +
+    theme_fivethirtyeight() +
+    scale_color_aaas(name = "Anellovirus PCR Status") +
+    scale_x_continuous(breaks = seq(-20, 280, by = 20)) +
+    theme(plot.background = element_rect(fill = "white"),
+          panel.background = element_rect(fill = "white"),
+          strip.background.x = element_rect(fill = "white"),
+          legend.background = element_rect(fill = "white"),
+          legend.key = element_rect(fill = "white"),
+          axis.text.x = element_text(size = 16),
+          axis.text.y = element_text(size = 16),
+          axis.title = element_text(size = 18),
+          axis.title.y = element_text(vjust = 3),
+          axis.title.x = element_text(vjust = -0.08),
+          legend.title = element_text(size = 15),
+          legend.text = element_text(size = 15),
+          legend.position = "bottom")
+
+g1 <- ggarrange(p1, p2, common.legend = T, legend = "bottom", align = "hv", ncol = 2, widths = c(.2, .8)) 
+ggsave(here("manuscript",
+           "figures",
+           "fig2a.pdf"), plot = g1, units = "mm", height = 160, width = 448, scale = 1)
+g1
+```
+
+### Panel B
+
+``` {r panel_B_setup echo=FALSE}
+transfusion_1_contig_orf1_stats <- read.csv(here("data",
+                                                 "metadata",
+                                                 "RingTx_transfusion1_contig_and_orf_stats.csv"), header = TRUE)
+transfusion_1_contig_orf1_stats %<>% mutate(transf_set = gsub("^(R\\d{2})[T|D].*", "\\1", RING_ID))
+transfusion_1_contig_orf1_stats %<>% mutate(subject = case_when(grepl("R\\d{2}D\\d{2}", RING_ID) ~ RING_ID,
+                                                                TRUE ~ gsub("^(R\\d{2})[T|D].*", "\\1", RING_ID)))
+transfusion_1_contig_orf1_stats %<>% mutate(time_point = case_when(grepl("R\\d{2}D\\d{2}", RING_ID) ~ gsub("R\\d{2}(D\\d{2})", "\\1", RING_ID),
+                                                                   TRUE ~ gsub("R\\d{2}(T\\d{2})", "\\1", RING_ID)))
+transfusion_1_contig_orf1_stats %<>% mutate(category = case_when(grepl("R\\d{2}D\\d{2}", RING_ID) ~ "donor",
+                                                                 TRUE ~ "recipient"))
+
+transfusion_1_contig_orf1_stats %>% head()
+```
+
+```{r donor_recipient_orf1_counts echo=FALSE, fig.height=6, fig.width=18}
+
+color_palette <- c("#3B4992", "#004512", "#E71E26", "#F59999", 
+                   "#F58020", "#CAB3D6", "#FDBF6F", "#B3D88B", 
+                   "#1979B5", "#B15B29", "#F9F49B", "#33A148",
+                   "#6B3F98", "#A5CEE4")
+
+recip_histo_p_low <- transfusion_1_contig_orf1_stats %>%
+  filter(category == "recipient" & subject != "R01") %>%
+  ggplot(aes(x = anello_orf1, y = subject, fill = subject, order = rev(time_point))) +
+    geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+    theme_fivethirtyeight() +
+    scale_fill_manual(values = color_palette) +
+    coord_cartesian(xlim = c(0,50)) +
+    xlab("No. of Anello Strains") +
+    ylab("Recipient") +
+    theme(plot.background = element_rect(fill = "white"),
+          panel.background = element_rect(fill = "white"),
+          strip.background.x = element_rect(fill = "white"),
+          legend.background = element_rect(fill = "white"),
+          axis.text.x = element_text(size = 15),
+          axis.text.y = element_text(size = 15),
+          axis.title = element_text(size = 18, face = "bold"),
+          axis.title.y = element_text(vjust = 1.5),
+          axis.title.x = element_text(vjust = -0.05),
+          strip.text = element_text(size = 15, face = "bold"),
+          legend.position = "none",
+          legend.direction = "vertical",
+          legend.title = element_text(size = 15),
+          legend.text= element_text(size = 13))
+
+recip_histo_p_high <- transfusion_1_contig_orf1_stats %>%
+  filter(category == "recipient" & subject != "R01") %>%
+  ggplot(aes(x = anello_orf1, y = subject, fill = subject, order = rev(time_point))) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+  theme_fivethirtyeight() +
+  scale_fill_manual(values = color_palette) +
+  coord_cartesian(xlim = c(130, 300)) + 
+  xlab("No. of Anello Strains") +
+  ylab("Recipient") +
+  theme(plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        strip.background.x = element_rect(fill = "white"),
+        legend.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 15, face = "bold"),
+        legend.position = "none",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 15),
+        legend.text= element_text(size = 13),
+        plot.margin = unit(c(0, 3, 0, -3), "mm"))
+
+recip_orf_count_p <- ggarrange(recip_histo_p_low, recip_histo_p_high, align = "h", widths = c(.6, .4))
+
+dcolor_palette <- c("#3B4992", "#E71E26", "#F59999", 
+                    "#F58020", "#CAB3D6", 
+                    "#1979B5", "#B15B29", "#33A148",
+                    "#6B3F98", "#A5CEE4")
+
+donor_histo_p_low <- transfusion_1_contig_orf1_stats %>%
+  filter(category == "donor" & anello_orf1 > 0) %>%
+  ggplot(aes(x = anello_orf1, y = subject, fill = transf_set)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+  theme_fivethirtyeight() +
+  scale_fill_manual(name = "", values = dcolor_palette) +
+  coord_cartesian(xlim = c(0,15)) +
+  scale_x_continuous(breaks = seq(0, 15, by=5)) +
+  xlab("No. of Anello Strains") +
+  ylab("Donors") +
+  theme(plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        strip.background.x = element_rect(fill = "white"),
+        legend.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        axis.title = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold", vjust = 1.5),
+        strip.text = element_text(size = 15, face = "bold"),
+        legend.position = "none",
+        legend.title = element_text(size = 15),
+        legend.text= element_text(size = 13),
+        plot.margin = unit(c(0, 0, 0, 3), "mm"))
+
+donor_histo_p_high <- transfusion_1_contig_orf1_stats %>%
+  filter(category == "donor" & anello_orf1 > 0) %>%
+  ggplot(aes(x = anello_orf1, y = subject, fill = transf_set)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE)) +
+  theme_fivethirtyeight() +
+  scale_fill_manual(name = "", values = dcolor_palette) +
+  coord_cartesian(xlim = c(30,110)) + 
+  scale_x_continuous(breaks = seq(30,110, by=30)) +
+  theme(plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        strip.background.x = element_rect(fill = "white"),
+        legend.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 15, face = "bold"),
+        legend.position = "none",
+        legend.title = element_text(size = 15),
+        legend.text= element_text(size = 13),
+        plot.margin = unit(c(6, 0, 12.5, 3), "mm"))
+
+donor_orf_count_p <- ggarrange(donor_histo_p_low, donor_histo_p_high, align = "h", widths = c(.7, .3))
+
+g2 <- ggarrange(donor_orf_conunt_p, recip_orf_count_p, align = "h", widths = c(.3, .7))
+
+ggsave(here("manuscript",
+            "figures",
+            "fig2b.pdf"), plot = g2, units = "mm", height = 172, width = 441, device = cairo_pdf, scale = 1)     
+g2
+```

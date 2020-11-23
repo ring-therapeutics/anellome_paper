@@ -1,6 +1,8 @@
 import importlib.machinery
 import importlib.util
-loader = importlib.machinery.SourceFileLoader('baltic','/Users/evogytis/Documents/baltic/baltic/baltic.py')
+import baltic
+import os
+loader = importlib.machinery.SourceFileLoader('baltic', os.path.join(os.path.dirname(baltic.__file__), "baltic.py"))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 bt = importlib.util.module_from_spec(spec)
 loader.exec_module(bt)
@@ -91,7 +93,7 @@ def reconstruct_ancestral_states(cfml_path,aln_path,tree_path,kappa,out_stem,inc
     for k in ll.getInternal(): ## iterate over nodes
         original_name_aln.write('>%s\n%s\n'%(k.traits['label'],''.join([base_seq[i] if cross_ref[i]==0 else SNPs[k.traits['label']][cross_ref[i]-1] for i in cross_ref]))) ## attach sequence to branch
     for k in ll.getExternal():
-        k.name=oldNames[k.name]
+        k.name=oldNames.get(k.name, k.name)
 
     backname_tree=open(os.path.join(base_path,out_stem+'.labelled_tree.newick'),'w')
     backname_tree.write(ll.toString())
