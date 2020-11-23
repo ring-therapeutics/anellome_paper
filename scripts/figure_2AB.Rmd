@@ -1,7 +1,6 @@
 ---
 title: "figure_2AB"
-author: "Cesar Arze"
-date: "11/23/2020"
+author: "Cesar Arze (Ring Therapeutics)"
 output:
  html_document:
     keep_md: true
@@ -14,29 +13,21 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(ggthemes)
-library(ggsci)
-library(RColorBrewer)
+library(ggpubr)
 library(here)
-library(stringr)
-library(iterators)
 library(magrittr)
-library(cowplot)
-library(viridis)
-library(ggsci)
-library(magrittr)
-library(ggridges)
-library(foreach)
 ```
 
 ## Fig 2: Characterization of the Personal Anellome (Panel A)
-*Overview of study design. Fifteen transfusion recipients paired with one or more blood donors  received a blood transfusion following surgery. Recipient samples were collected post-transfusion over a period of 280 days. Pan-anellovirus PCR-positive samples in red.*
+*Overview of study design. Fifteen transfusion recipients paired with one or more blood donors received a blood transfusion following surgery.*
+*Recipient samples were collected post-transfusion over a period of 280 days. Pan-anellovirus PCR-positive samples in red.*
 
 
 ### Setup
 ***
 Read in metadata file containing Pan-anello PCR status of all samples and counts of ORF1s and Anellovirus contigs per sample obtained from AnelloScope sequencing.
 
-```{r panel_a_setup}
+```{r, panel_a_setup}
 timeline_metadata_df <- read.csv(here("data",
                                       "figure_1",
                                       "RingTx_transfusion1_metadata.csv"), header = TRUE)
@@ -64,7 +55,7 @@ donor_recip_metadata_df %>% head()
 
 ### Panel A
 
-```{r anello_pcr_status, echo=FALSE, fig.height=6, fig.width=18}
+```{r, anello_pcr_status, echo=FALSE, fig.height=6, fig.width=18}
 
 p1 <- donor_recip_metadata_df %>% 
   mutate(timepoint = gsub("^R\\d{2}([T|D]\\d{2}).*", "\\1", ID)) %>%
@@ -122,7 +113,7 @@ g1
 
 ### Panel B
 
-``` {r panel_B_setup echo=FALSE}
+``` {r, panel_B_setup, echo=FALSE}
 transfusion_1_contig_orf1_stats <- read.csv(here("data",
                                                  "figure_1",
                                                  "RingTx_transfusion1_contig_and_orf_stats.csv"), header = TRUE)
@@ -137,7 +128,7 @@ transfusion_1_contig_orf1_stats %<>% mutate(category = case_when(grepl("R\\d{2}D
 transfusion_1_contig_orf1_stats %>% head()
 ```
 
-```{r donor_recipient_orf1_counts echo=FALSE, fig.height=6, fig.width=18}
+```{r, donor_recipient_orf1_counts, echo=FALSE, fig.height=6, fig.width=18}
 
 color_palette <- c("#3B4992", "#004512", "#E71E26", "#F59999",
                    "#F58020", "#CAB3D6", "#FDBF6F", "#B3D88B",
@@ -245,7 +236,7 @@ donor_histo_p_high <- transfusion_1_contig_orf1_stats %>%
 
 donor_orf_count_p <- ggarrange(donor_histo_p_low, donor_histo_p_high, align = "h", widths = c(.7, .3))
 
-g2 <- ggarrange(donor_orf_conunt_p, recip_orf_count_p, align = "h", widths = c(.3, .7))
+g2 <- ggarrange(donor_orf_count_p, recip_orf_count_p, align = "h", widths = c(.3, .7))
 
 ggsave(here("figures",
             "fig2b.pdf"), plot = g2, units = "mm", height = 172, width = 441, device = cairo_pdf, scale = 1)
