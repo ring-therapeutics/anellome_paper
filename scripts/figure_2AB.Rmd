@@ -14,8 +14,11 @@ library(ggplot2)
 library(reshape2)
 library(ggthemes)
 library(ggpubr)
+library(ggsci)
 library(here)
 library(magrittr)
+
+here::i_am("../anello_diversity/scripts/figure_2AB.Rmd")
 ```
 
 ## Fig 2: Characterization of the Personal Anellome (Panel A)
@@ -130,10 +133,9 @@ transfusion_1_contig_orf1_stats %>% head()
 
 ```{r, donor_recipient_orf1_counts, echo=FALSE, fig.height=6, fig.width=18}
 
-color_palette <- c("#3B4992", "#004512", "#E71E26", "#F59999",
-                   "#F58020", "#CAB3D6", "#FDBF6F", "#B3D88B",
-                   "#1979B5", "#B15B29", "#F9F49B", "#33A148",
-                   "#6B3F98", "#A5CEE4")
+color_palette <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99',
+                   '#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a',
+                   '#ffff99','#b15928','lightgrey','dimgrey')
 
 recip_histo_p_low <- transfusion_1_contig_orf1_stats %>%
   filter(category == "recipient" & subject != "R01") %>%
@@ -184,10 +186,8 @@ recip_histo_p_high <- transfusion_1_contig_orf1_stats %>%
 
 recip_orf_count_p <- ggarrange(recip_histo_p_low, recip_histo_p_high, align = "h", widths = c(.6, .4))
 
-dcolor_palette <- c("#3B4992", "#E71E26", "#F59999",
-                    "#F58020", "#CAB3D6",
-                    "#1979B5", "#B15B29", "#33A148",
-                    "#6B3F98", "#A5CEE4")
+dcolor_palette <- c("#a6cee3", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c",
+                    "#cab2d6", "#6a3d9a", "#b15928", 'lightgrey','dimgrey')
 
 donor_histo_p_low <- transfusion_1_contig_orf1_stats %>%
   filter(category == "donor" & anello_orf1 > 0) %>%
