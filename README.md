@@ -23,9 +23,7 @@ Analysis scripts associated with this manuscript require the following software:
 2. R
    - ggplot2
    - dplyr
-   - reshape2
    - RColorBrewer
-   - ggTimeSeries
    - ggthemes
    - ggsci
    - tidyverse
