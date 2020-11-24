@@ -17,8 +17,6 @@ library(ggpubr)
 library(ggsci)
 library(here)
 library(magrittr)
-
-here::i_am("../anello_diversity/scripts/figure_2AB.Rmd")
 ```
 
 ## Fig 2: Characterization of the Personal Anellome (Panel A)
@@ -206,7 +204,7 @@ donor_histo_p_low <- transfusion_1_contig_orf1_stats %>%
         axis.text.x = element_text(size = 15),
         axis.text.y = element_text(size = 15),
         axis.title = element_blank(),
-        axis.title.y = element_text(size = 15, face = "bold", vjust = 1.5),
+        axis.title.y = element_text(size = 18, face = "bold", vjust = 1.5),
         strip.text = element_text(size = 15, face = "bold"),
         legend.position = "none",
         legend.title = element_text(size = 15),
