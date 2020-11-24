@@ -33,6 +33,7 @@ Analysis scripts associated with this manuscript require the following software:
    - ggpubr
    - gridExtra
 3. [ClonalFrameML](https://github.com/xavierdidelot/ClonalFrameML)
+4. [PhyML](https://github.com/stephaneguindon/phyml)
 
 A conda environment has been provided for ease-of-use setup to run all analysis.
 
