@@ -1,4 +1,4 @@
-name: manuscript
+name: transfusion_anello_diversity
 channels:
   - bioconda
   - conda-forge
