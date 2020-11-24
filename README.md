@@ -17,20 +17,26 @@ Analysis scripts associated with this manuscript require the following software:
    - jupyterlab
    - matplotlib
    - biopython
-   - scipy
+   - scikit-learn
    - shapely
    - baltic
 2. R
    - ggplot2
-   - dplyr2
+   - dplyr
    - reshape2
+   - RColorBrewer
+   - ggTimeSeries
    - ggthemes
+   - ggsci
    - tidyverse
    - magrittr
    - here
    - foreach
    - scales
    - ggpubr
+   - cowplot
+   - Cairo
+   - reshape2
    - gridExtra
 3. [ClonalFrameML](https://github.com/xavierdidelot/ClonalFrameML)
 4. [PhyML](https://github.com/stephaneguindon/phyml)
