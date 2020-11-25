@@ -39,7 +39,7 @@ Analysis scripts associated with this manuscript require the following software:
 3. [ClonalFrameML](https://github.com/xavierdidelot/ClonalFrameML)
 4. [PhyML](https://github.com/stephaneguindon/phyml)
 
-A conda environment has been provided for ease-of-use setup to run all analysis.
+A conda environment has been provided for ease-of-use setup to run all analyses.
 
 ## File Descriptions
 __TODO__: Provide information on all data files or any auxillary files required for analysis.
