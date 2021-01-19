@@ -1,0 +1,216 @@
+---
+title: "table_S4"
+author: "Cesar Arze (Ring Therapeutics)"
+output: html_document
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(ggthemes)
+library(gghighlight)
+library(tidyverse)
+library(scales)
+library(RColorBrewer)
+library(foreach)
+library(here)
+library(ggpubr)
+library(cowplot)
+library(here)
+library(yarrr)
+library(Cairo)
+library(gridExtra)
+library(gt)
+library(magrittr)
+```
+
+## Table S4: Blood Transfusion Transmitted Anello's 
+
+The following analysis uses abundance data for donor anellovirus lineages to determine whether or not a novel lineage was transferred to a blood transfusion recipient. The input to this data is an abundance table in MPA format as shown below.
+
+```{r, setup_input_parsing}
+# Parse metadata file containing categorical timepoints (T01, T02) mapping to actual days since transfusion.
+metadata_df <- read.csv(here("data",
+                             "figure_1",
+                             "RingTx_transfusion1_metadata.csv"), header = TRUE)
+
+fill_missing_timepoints <- function(abundance_df) {
+  ## Let's go ahead and add any missing timepoints into our dataframe so we can
+  ## have a full time course here
+  all_timepoints <- c("T00", "T01", "T02", "T03", "T04")
+  
+  incomplete_orfs <- abundance_df %>% 
+    group_by(orf, sample) %>% 
+    filter(value == 0 & grepl("T\\d{2}", timepoint)) %>%
+    tally() %>% 
+    filter(n < 5) %>% 
+    distinct(orf)
+  
+  for (inc_orf in incomplete_orfs$orf) {
+    sample <- gsub("(R\\d{2})[T|D]\\d{2}.*", "\\1", inc_orf)
+    timepoint <- ifelse(grepl("D\\d{2}", inc_orf), "T00", gsub("R\\d{2}(T\\d{2}).*", "\\1", inc_orf))
+    
+    missing_timepoints <- abundance_df %>% 
+      filter(orf == inc_orf) %>%
+      .$timepoint %>%
+      setdiff(all_timepoints, .)
+    
+    if (length(missing_timepoints) > 0) {
+      missing_timepoints <- paste(sample, missing_timepoints, sep="")
+      
+      orf_vec <- rep(inc_orf, length(missing_timepoints))
+      source_vec <- rep("missing", length(missing_timepoints))
+      samples_vec <- rep(sample, length(missing_timepoints))
+      timepoint_vec <- gsub("R\\d{2}", "", missing_timepoints)
+      
+      days_vec <- metadata_df %>%
+        filter(RING_ID %in% missing_timepoints) %>%
+        select(day_of_draw) %>%
+        unique() %>%
+        pull() %>%
+        as.double()
+      
+      abundance_df %<>% 
+        ungroup() %>%
+        add_row(orf=orf_vec, sample=samples_vec, timepoint=timepoint_vec, timepoint_days=days_vec, source=source_vec)
+    } 
+  }
+  
+  return(abundance_df)
+}
+
+parse_orf_abundances <- function(abundance_file) {
+  orf_abundances_df <- read.csv(abundance_file, sep="\t", row.names = 1, header=TRUE)
+
+  orf_abundances_df$orf <- rownames(orf_abundances_df)
+  rownames(orf_abundances_df) <- NULL
+  
+  orf_abundances_m <- orf_abundances_df %>%
+    melt(id.vars=c("orf"))
+    
+  orf_abundances_m %<>%
+    left_join(metadata_df, by = c("variable" = "RING_ID")) %>%
+    mutate(timepoint_days = as.numeric(day_of_draw)) %>%
+    select(orf, variable, timepoint_days, value) %>%
+    mutate(timepoint = gsub("R\\d{2}([T|D]\\d{2}).*", "\\1", variable)) %>% 
+    mutate(coverage = gsub(".*_cov_(\\d+.\\d+)_.*", "\\1", orf)) %>%
+    mutate(source = ifelse(str_detect(orf, "^R\\d{2}D\\d{2}"), "donor", "recipient")) %>%
+    mutate(sample = gsub("(R\\d{2})[D|T]\\d{2}[_|-].*", "\\1", orf))
+  
+  if (nrow(orf_abundances_m) > 0) {
+    orf_abundances_m <- fill_missing_timepoints(orf_abundances_m)
+  } else {
+    orf_abundances_m <- orf_abundances_m %>%
+      ungroup() %>%
+      mutate(source = as.character(source))
+  }
+  
+  return(orf_abundances_m)
+}
+
+# Parse a single file to demonstrate what our input looks like
+R04_orf_abundances_df <- read.csv(here("data",
+                                       "figure_3",
+                                       "R04.rabund.final.txt"), sep="\t", header = TRUE)
+
+# This is the melted data we process
+R04_orf_abundances_df %>% head()
+```
+
+In order to get our transmitted and not-transmitted anellovirus lineages we need to parse each abundance file first, 
+followed by identifying those anelloviruses that transmit and those that didn't.
+
+
+```{r, get_transmitted_not_transmitted_anellos}
+
+get_transmitted_orfs <- function(orf_abundances.m, 
+                                 min_occur=3, 
+                                 abund_thresh=.000000001) {
+  orfs_matches_df <- orf_abundances_m %>% 
+    filter(value >= abund_thresh) %>% 
+    group_by(orf, timepoint) %>% 
+    select(orf, timepoint, timepoint_days, value, sample, coverage) %>% 
+    arrange(orf) %>% 
+    distinct(orf, timepoint, .keep_all = TRUE)
+  
+  orfs_two_matches_df <- orfs_matches_df %>% 
+    filter(grepl("T\\d{2}", timepoint)) %>%
+    group_by(orf) %>% 
+    tally() %>% 
+    filter(n >= min_occur)
+  orfs_multi_matches_df <- orfs_matches_df %>% 
+    filter(orf %in% orfs_two_matches_df$orf)
+  
+  return(orfs_multi_matches_df)
+}
+
+get_non_transmitted_orfs <- function(abundance_df) {
+  not_transmitted_df <- abundance_df %>%
+    group_by(orf, sample) %>%
+    filter(value == 0 & grepl("^R\\d{2}D", orf) & grepl("T\\d{2}", timepoint)) %>%
+    tally() %>% 
+    filter(n == 5) %>% 
+    distinct(orf)
+  
+  return(not_transmitted_df)
+}
+
+transmitted_orfs_dfs <- list()
+not_transmitted_orfs_dfs <- list()
+ret <- foreach(sample = c("R02", "R03", "R04", "R05", "R06", "R07", "R08",
+                          "R09", "R10", "R11", "R12", "R13", "R14", "R15")) %do% {
+                            orf_abundances_m <- parse_orf_abundances(here("data",
+                                                                          "figure_3",
+                                                                          paste(sample, ".rabund.final.txt", sep = "")))
+                            transmitted_orfs <- get_transmitted_orfs(orf_abundances_m, min_occur = 1, abund_thresh = 0.000001)
+                            not_transmitted_orfs <- get_non_transmitted_orfs(orf_abundances_m)
+
+                            transmitted_orfs_dfs <- c(transmitted_orfs_dfs, list(transmitted_orfs %>% ungroup()))
+                            not_transmitted_orfs_dfs <- c(not_transmitted_orfs_dfs, list(not_transmitted_orfs))
+}
+
+transmitted_orf_anellos = bind_rows(transmitted_orfs_dfs)
+not_transmitted_anellos = bind_rows(not_transmitted_orfs_dfs)
+
+donor_distinct_timepoints <- transmitted_orf_anellos %>%filter(grepl("^R\\d{2}D", orf)) %>%
+  select(timepoint) %>%
+  distinct() %>%
+  pull()
+
+transmitted_orfs_df <- transmitted_orf_anellos %>%
+  filter(grepl("^R\\d{2}D", orf)) %>%
+  spread(key = timepoint, value = value) %>%
+  group_by(orf) %>%
+  fill(donor_distinct_timepoints, .direction = 'up')  %>% 
+  slice(1) %>%
+  select(-timepoint_days)
+transmitted_orfs_df %>% head()
+
+transmitted_orfs_df %>% 
+  write.csv(here("data", "supplementary", "table_S4.csv"), row.names = F)
+
+not_transmitted_anellos %>% head()
+```
+
+Now we can do some quick tallying of transmitted vs. not transmitted 
+
+```{r, transmitted_stats}
+transmitted_orf_anellos %>%
+  filter(grepl("^R\\d{2}D", orf)) %>%
+  group_by(sample) %>%
+  distinct(orf) %>%
+  tally()
+
+transmitted_orf_anellos %>%
+  filter(grepl("^R\\d{2}D", orf)) %>%
+    group_by(orf) %>%
+    tally() %>%
+    arrange(-n)
+
+## How many re-dosed Anello's did we have?
+transmitted_orf_anellos %>%
+  filter(grepl("^R\\d{2}D", orf)) %>%
+  filter(timepoint == "T00" & value > 0)
+```

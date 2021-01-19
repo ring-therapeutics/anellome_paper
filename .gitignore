@@ -45,6 +45,9 @@ vignettes/*.pdf
 # pkgdown site
 docs/
 
+# RStudio
+*.Rproj
+
 ###########
 # Python
 ###########

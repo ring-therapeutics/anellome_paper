@@ -22,21 +22,22 @@ library(cowplot)
 library(here)
 library(Cairo)
 library(gridExtra)
+library(magrittr)
 
 parse_orf_abundances <- function(abundance_file, drop_zero=F, fill_missing=F) {
   orf_abundances.df <- read.csv(abundance_file, sep="\t", row.names = 1, header=TRUE)
 
   orf_abundances.df$orf <- rownames(orf_abundances.df)
   rownames(orf_abundances.df) <- NULL
-  
+
   if (drop_zero == T) {
     orf_abundances.df <- orf_abundances.df %>% 
       select_if(negate(function(col) is.numeric(col) && sum(col) == 0))
   }
-  
+
   orf_abundances.m <- orf_abundances.df %>%
     melt(id.vars=c("orf"))
-    
+
   orf_abundances.m <- orf_abundances.m %>% 
     left_join(metadata_df, by = c("variable" = "RING_ID")) %>%
     mutate(timepoint_days = as.numeric(day_of_draw)) %>%
@@ -45,8 +46,8 @@ parse_orf_abundances <- function(abundance_file, drop_zero=F, fill_missing=F) {
     mutate(coverage = gsub(".*_cov_(\\d+.\\d+)_.*", "\\1", orf)) %>%
     mutate(source = ifelse(str_detect(orf, "^R\\d{2}D\\d{2}"), "donor", "recipient")) %>%
     mutate(sample = gsub("(R\\d{2})[D|T]\\d{2}[_|-].*", "\\1", orf))
-  
-  if (fill_missing = T) {
+
+  if (fill_missing == T) {
     if (nrow(orf_abundances.m) > 0) {
       orf_abundances.m <- fill_missing_timepoints(orf_abundances.m)
     } else {
@@ -55,13 +56,13 @@ parse_orf_abundances <- function(abundance_file, drop_zero=F, fill_missing=F) {
         mutate(source = as.character(source))
     }
   }
-  
+
   return(orf_abundances.m)
 }
 ```
 
 ## Multiple Anellovirus Lineages are Transmitted via Blood Transfusion (Panel A)
-*Stream graph showing relative abundance of anellovirus lineages longitudinally following blood transfusion.*
+*Area graph showing relative abundance of anellovirus lineages longitudinally following blood transfusion.*
 *Lineages colored in shades of red denote transmitted lineages from the donor(s) while shades of blue indicate resident anellovirus.*
 
 
@@ -114,7 +115,7 @@ subject_rabund_plots <- foreach(rel_abundance_df = rel_abundances_dfs) %do% {
   tgt_subject <- rel_abundance_df %>% head() %>% select(sample) %>% distinct() %>% pull()
   donor_count <- orf_category_counts %>% filter(subject == tgt_subject) %>% select(d_count) %>% pull()
   recip_count <- orf_category_counts %>% filter(subject == tgt_subject) %>% select(r_count) %>% pull()
-  
+
   rel_abundance_df %>%
     filter(!(grepl("R\\d{2}D\\d{2}", variable))) %>%
     ggplot(aes(x = as.numeric(timepoint_days), y = value, fill = orf)) +
