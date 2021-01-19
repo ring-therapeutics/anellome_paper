@@ -1,5 +1,5 @@
 # Global genome analyses reveal a vast and dynamic anellovirus landscape within the human virome
-#### Cesar Arze <sup>1</sup>, Simeon Springer <sup>1</sup>, Gytis Dudas <sup>2</sup>, Sneha Patel <sup>1</sup>, Agamoni Bhattacharya <sup>1</sup>, Harish Swaminathan <sup>1</sup>, Carlo Brugnara <sup>3,4</sup>, Simon Delagrave <sup>1</sup>, Avak Kahvejian <sup>1,5</sup>, Yann Echelard <sup>1,5</sup>, Erica G. Weinstein <sup>1,5</sup>, Roger J. Hajjar <sup>1,5</sup>, Kristian G. Andersen <sup>6</sup>, Nathan L. Yozwiak <sup>1</sup>
+#### Cesar Arze <sup>1</sup>, Simeon Springer <sup>1</sup>, Gytis Dudas <sup>2</sup>, Sneha Patel <sup>1</sup>, Agamoni Bhattacharyya <sup>1</sup>, Harish Swaminathan <sup>1</sup>, Carlo Brugnara <sup>3,4</sup>, Simon Delagrave <sup>1</sup>, Avak Kahvejian <sup>1,5</sup>, Yann Echelard <sup>1,5</sup>, Erica G. Weinstein <sup>1,5</sup>, Roger J. Hajjar <sup>1,5</sup>, Kristian G. Andersen <sup>6</sup>, Nathan L. Yozwiak <sup>1</sup>
 <sup>1</sup>Ring Therapeutics, Cambridge, MA, USA,
 <sup>2</sup>Gothenburg Global Biodiversity Centre, Gothenburg, Sweden,
 <sup>3</sup>Boston Children’s Hospital, Boston, MA, USA,
@@ -42,10 +42,10 @@ Analysis scripts associated with this manuscript require the following software:
 A conda environment has been provided for ease-of-use setup to run all analyses.
 
 ## File Descriptions
-__TODO__: Provide information on all data files or any auxillary files required for analysis.
+*Coming soon*
 
 ## Sequence Data Availability
-Sequence data can be found with the following NCBI's BioProject accession: [PRJNA679286](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA679286)
+Sequence data can be found with the following NCBI's BioProject accession: [PRJNA679286](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA679286) (Pending Release)
 
 ## Citation
-__TODO__: Add citation when available
+**TBD**
