@@ -1,0 +1,151 @@
+---
+title: "figure_3A"
+author: "Cesar Arze (Ring Therapeutics)"
+output: html_document
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(ggthemes)
+library(ggTimeSeries)
+library(tidyverse)
+library(scales)
+library(RColorBrewer)
+library(foreach)
+library(here)
+library(ggpubr)
+library(cowplot)
+library(here)
+library(Cairo)
+library(gridExtra)
+library(magrittr)
+
+parse_orf_abundances <- function(abundance_file, drop_zero=F, fill_missing=F) {
+  orf_abundances.df <- read.csv(abundance_file, sep="\t", row.names = 1, header=TRUE)
+
+  orf_abundances.df$orf <- rownames(orf_abundances.df)
+  rownames(orf_abundances.df) <- NULL
+
+  if (drop_zero == T) {
+    orf_abundances.df <- orf_abundances.df %>% 
+      select_if(negate(function(col) is.numeric(col) && sum(col) == 0))
+  }
+
+  orf_abundances.m <- orf_abundances.df %>%
+    melt(id.vars=c("orf"))
+
+  orf_abundances.m <- orf_abundances.m %>% 
+    left_join(metadata_df, by = c("variable" = "RING_ID")) %>%
+    mutate(timepoint_days = as.numeric(day_of_draw)) %>%
+    select(orf, variable, timepoint_days, value) %>%
+    mutate(timepoint = gsub("R\\d{2}([T|D]\\d{2}).*", "\\1", variable)) %>% 
+    mutate(coverage = gsub(".*_cov_(\\d+.\\d+)_.*", "\\1", orf)) %>%
+    mutate(source = ifelse(str_detect(orf, "^R\\d{2}D\\d{2}"), "donor", "recipient")) %>%
+    mutate(sample = gsub("(R\\d{2})[D|T]\\d{2}[_|-].*", "\\1", orf))
+
+  if (fill_missing == T) {
+    if (nrow(orf_abundances.m) > 0) {
+      orf_abundances.m <- fill_missing_timepoints(orf_abundances.m)
+    } else {
+      orf_abundances.m <- orf_abundances.m %>%
+        ungroup() %>%
+        mutate(source = as.character(source))
+    }
+  }
+
+  return(orf_abundances.m)
+}
+```
+
+## Multiple Anellovirus Lineages are Transmitted via Blood Transfusion (Panel A)
+*Area graph showing relative abundance of anellovirus lineages longitudinally following blood transfusion.*
+*Lineages colored in shades of red denote transmitted lineages from the donor(s) while shades of blue indicate resident anellovirus.*
+
+
+### Setup
+
+Read in metadata file containing translation of categorical time-points (T00, T01, T02, etc.) to actual days since transfusion. 
+
+For each set of samples, parse the relative abundance files (in MPA format) to produce one large dataframe containing all
+relative abundances for plotting. Additioanlly setup a list containing the number of donor lineagse for each relative abundance
+dataframe to aid in coloring of steamgraphs.
+
+```{r, panel_a_setup}
+
+metadata_df <- read.csv(here("data", 
+                             "figure_1", 
+                             "RingTx_transfusion1_metadata.csv"), header = TRUE) %>%
+  distinct(RING_ID, .keep_all = TRUE)
+
+subjects = c("R02", "R03", "R04", "R05", "R06", "R07", "R08",
+            "R09", "R10", "R11", "R12", "R13", "R14", "R15")
+orf_category_counts <- data.frame(subject=character(), d_count=integer(), r_count=integer())
+
+rel_abundances_dfs <- foreach(subject = subjects) %do% {
+  rabundances_df <- parse_orf_abundances(here("data",
+                                              "figure_3",
+                                              paste(subject, ".rabund.final.txt", sep = "")), drop_zero = T)
+  donor_count <- rabundances_df %>% 
+      filter(!(grepl("R\\d{2}D\\d{2}", variable))) %>%
+      filter(grepl("^R\\d{2}D\\d{2}", orf)) %>%
+      distinct(orf, .keep_all = T) %>%
+      nrow()
+  recip_count <- rabundances_df %>% 
+      filter(!(grepl("R\\d{2}D\\d{2}", variable))) %>%
+      filter(grepl("^R\\d{2}T\\d{2}", orf)) %>%
+      distinct(orf, .keep_all = T) %>%
+      nrow()
+  
+  orf_category_counts %<>% add_row(subject = subject, d_count = donor_count, r_count = recip_count)
+
+  return(rabundances_df)
+}
+
+```
+
+### Panel A
+
+```{r, fig.height=12, fig.width=17, panel_a, echo=FALSE}
+
+subject_rabund_plots <- foreach(rel_abundance_df = rel_abundances_dfs) %do% {
+  tgt_subject <- rel_abundance_df %>% head() %>% select(sample) %>% distinct() %>% pull()
+  donor_count <- orf_category_counts %>% filter(subject == tgt_subject) %>% select(d_count) %>% pull()
+  recip_count <- orf_category_counts %>% filter(subject == tgt_subject) %>% select(r_count) %>% pull()
+
+  rel_abundance_df %>%
+    filter(!(grepl("R\\d{2}D\\d{2}", variable))) %>%
+    ggplot(aes(x = as.numeric(timepoint_days), y = value, fill = orf)) +
+    geom_area(alpha=1, size=0.35, colour="black") +
+    ggtitle(tgt_subject) +
+    theme_fivethirtyeight() +
+    scale_y_continuous(labels = scales::percent) +
+    scale_fill_manual(values = c(colorRampPalette(brewer.pal(9, "Reds")[6:9])(donor_count),
+                                 colorRampPalette(brewer.pal(8, "Blues")[3:8])(recip_count))) +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size = 15),
+          axis.text.x = element_text(size = 15),
+          panel.background = element_rect(fill = "transparent"), # bg of the panel
+          plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+          panel.grid.major = element_blank(), # get rid of major grid
+          panel.grid.minor = element_blank(), # get rid of minor grid
+          legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+          legend.box.background = element_rect(fill = "transparent")) # get rid of legend panel bg)
+}
+
+subject_rabund_figures <- do.call(grid.arrange, c(subject_rabund_plots, ncol=4))
+cowplot::ggdraw(annotate_figure(subject_rabund_figures,
+                                     left = text_grob("Relative Abundance", size = 18, rot = 90, face = "bold"),
+                                     bottom = text_grob("Days since Transfusion", size = 18, face = "bold"))) +
+  theme_fivethirtyeight() +
+  theme(plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        strip.background.x = element_rect(fill = "white"),
+        legend.background = element_rect(fill = "white"))
+ggsave(here("figures",
+            "fig3A.pdf"), units = "mm", height = 286, width = 435, device = cairo_pdf, scale = 1)
+```
+
