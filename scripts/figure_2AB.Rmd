@@ -17,6 +17,7 @@ library(ggpubr)
 library(ggsci)
 library(here)
 library(magrittr)
+library(patchwork)
 ```
 
 ## Fig 2: Characterization of the Personal Anellome (Panel A)
@@ -75,7 +76,7 @@ p1 <- donor_recip_metadata_df %>%
           legend.key = element_rect(fill = "white"),
           axis.text.x = element_blank(),
           axis.text.y = element_text(size = 16),
-          axis.title.y = element_text(size = 18, vjust = 3),
+          axis.title.y = element_text(size = 18, face = "bold", vjust = 3),
           axis.title.x = element_blank(),
           legend.title = element_text(size = 15),
           legend.text = element_text(size = 15),
@@ -100,15 +101,13 @@ p2 <- timeline_metadata_m %>%
           axis.text.x = element_text(size = 16),
           axis.text.y = element_text(size = 16),
           axis.title = element_text(size = 18),
-          axis.title.y = element_text(vjust = 3),
+          axis.title.y = element_text(size = 18, face = "bold", vjust = 3),
           axis.title.x = element_text(vjust = -0.08),
           legend.title = element_text(size = 15),
           legend.text = element_text(size = 15),
           legend.position = "bottom")
 
 g1 <- ggarrange(p1, p2, common.legend = T, legend = "bottom", align = "hv", ncol = 2, widths = c(.2, .8))
-ggsave(here("figures",
-            "fig2a.pdf"), plot = g1, units = "mm", height = 160, width = 448, scale = 1)
 g1
 ```
 
@@ -195,7 +194,7 @@ donor_histo_p_low <- transfusion_1_contig_orf1_stats %>%
   scale_fill_manual(name = "", values = dcolor_palette) +
   coord_cartesian(xlim = c(0,15)) +
   scale_x_continuous(breaks = seq(0, 15, by=5)) +
-  xlab("No. of Anello Strains") +
+  xlab("No. of Anello Lineages") +
   ylab("Donors") +
   theme(plot.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = "white"),
@@ -236,7 +235,14 @@ donor_orf_count_p <- ggarrange(donor_histo_p_low, donor_histo_p_high, align = "h
 
 g2 <- ggarrange(donor_orf_count_p, recip_orf_count_p, align = "h", widths = c(.3, .7))
 
+layout <- "
+####
+AAAA
+####
+BBBB
+"
+
+g1 / g2 + plot_annotation(tag_levels = 'A') + plot_layout(design = layout) & theme(plot.tag = element_text(size = 36))
 ggsave(here("figures",
-            "fig2b.pdf"), plot = g2, units = "mm", height = 172, width = 441, device = cairo_pdf, scale = 1)
-g2
+            "figure_2AB.pdf"), units = "mm", height = 275, width = 650, device = cairo_pdf, scale = 1)
 ```

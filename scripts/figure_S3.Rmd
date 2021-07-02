@@ -1,0 +1,127 @@
+---
+title: "figure_S3_analysis"
+author: "Cesar Arze (Ring Therapeutics)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(ggthemes)
+library(here)
+library(stringr)
+library(magrittr)
+library(cowplot)
+library(ggsci)
+library(ggridges)
+library(foreach)
+library(doParallel)
+
+load_sdt_data <- function(matrix_file) {
+  matrix_n <- max(count.fields(matrix_file, sep = ","))
+  anello_mat <- data.matrix(read.table(matrix_file, 
+                                       sep = ",",
+                                       fill = TRUE, 
+                                       row.names = 1,
+                                       col.names = 1:matrix_n))
+  colnames(anello_mat) <- rownames(anello_mat)
+
+  anello_mat_melt <- melt(anello_mat)
+  anello_mat_melt %<>% mutate(genus_1 = case_when(grepl("TTV_", Var1) ~ "Alpha",
+                                                  grepl("TLMV", Var1) ~ "Gamma",
+                                                  grepl("TTMV", Var1) ~ "Beta"))
+  anello_mat_melt %<>% mutate(genus_2 = case_when(grepl("TTV_", Var2) ~ "Alpha",
+                                                  grepl("TLMV", Var2) ~ "Gamma",
+                                                  grepl("TTMV", Var2) ~ "Beta"))
+  anello_mat_melt %<>% mutate(perc_id = value * 100)
+
+  return(anello_mat_melt)
+}
+```
+
+## Supplemental Figure 5: Pairwise Comparisons Between Lineages at Nucleotide and Protein Level
+
+First let's start by loading up all our AAI values and Nucleotide comparisons. We'll add some metadata we need as well.
+
+```{r load_data}
+## TODO: Put this data in the manuscript's data repository
+aai_df <- read.table(here("data",
+                          "intrahost_diversity",
+                          "aai_summary.tsv"), sep="\t", comment.char="", header=T)
+
+aai_df %<>%
+  mutate(Genome.A.Subject = gsub("^(R\\d{2})[T|D]\\d{2}.*", "\\1", X.Genome.A)) %>%
+  mutate(Timepoint.A = gsub("^R\\d{2}([T|D]\\d{2}).*", "\\1", X.Genome.A))
+aai_df %<>%
+  mutate(Genome.B.Subject = gsub("^(R\\d{2})[T|D]\\d{2}.*", "\\1", Genome.B)) %>%
+  mutate(Timepoint.B = gsub("^R\\d{2}([T|D]\\d{2}).*", "\\1", Genome.B))
+
+# Load SDT output
+genome_sdt_matrix <- load_sdt_data(here("data",
+                                        "figure_S3",
+                                        "contigs_mat.txt"))
+orf1_sdt_matrix <- load_sdt_data(here("data",
+                                      "figure_S3"
+                                      "orf1_mat.txt"))
+orf2_sdt_matrix <- load_sdt_data(here("data",
+                                      "figure_S3"
+                                      "orf2_mat.txt"))
+fivep_utr_sdt_matrix <- load_sdt_data(here("data",
+                                           "figure_S3"
+                                           "5_utr_mat.txt"))
+```
+
+Let's look in parallel, somewhat related data in SDT generated pairwise comparisons between many 
+different sequence elements: Contig, ORF1, ORF2, 5' UTR
+
+```{r sdt_figures, echo=FALSE}
+plot_sdt_matrix <- function(sdt_matrix, seq_title, fill_color) {
+  distribution_plot <- sdt_matrix %>%
+    ggplot(aes(x = perc_id)) +
+    geom_histogram(aes(y=..density..), binwidth = 2, color = "black", fill = fill_color, position="identity", alpha=0.8) +
+    scale_fill_aaas(name = "") +
+    scale_color_aaas(name = "") +
+    theme_fivethirtyeight() +
+    ggtitle(seq_title) +
+    theme(axis.text.x = element_text(size = 15),
+          axis.text.y = element_text(size = 15),
+          axis.title = element_blank(),
+          legend.title = element_text(size = 15),
+          legend.text= element_text(size = 13),
+          panel.background = element_rect(fill = "transparent"), # bg of the panel
+          plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+          legend.background = element_rect(fill = "transparent", color = NA), # get rid of legend bg
+          legend.box.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(fill = "transparent"))
+
+  return(distribution_plot)
+}
+
+genomes_distribution_p <- plot_sdt_matrix(genome_sdt_matrix, "Contigs", "#3B4992FF")
+orf1_distribution_p <- plot_sdt_matrix(orf1_sdt_matrix, "ORF1", "#EE0000FF")
+orf2_distribution_p <- plot_sdt_matrix(orf2_sdt_matrix, "ORF2", "#631879FF")
+fivep_utr_distribution_p <- plot_sdt_matrix(fivep_utr_sdt_matrix, "5' UTR", "#008B45FF")
+
+merged_sdt_plots <- plot_grid(genomes_distribution_p, orf1_distribution_p, orf2_distribution_p, utr_distribution_p,
+          scale = 0.98,
+          ncol = 1) +
+  draw_label("Percent similarity", x=0.5, y=0, vjust=-0.03, size = 18, fontface = "bold", angle= 0) +
+  draw_label("Proportion of pairwise comparisons", x=0, y=0.5, vjust=0.65, size = 18, fontface = "bold", angle=90) +
+  theme_fivethirtyeight() +
+  theme(panel.background = element_rect(fill = "transparent"), # bg of the panel
+        plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+        legend.background = element_rect(fill = "transparent", color = NA), # get rid of legend bg
+        legend.box.background = element_rect(fill = "transparent", color = NA),
+        legend.key = element_rect(fill = "transparent"))
+
+## Now lets merge our two sets of figures to create our final supplemental figure here.
+plot_grid(aai_similar_anellos, merged_sdt_plots, nrow = 1,
+          rel_widths = c(.6, .4), 
+          labels = c("A", "B"),
+          label_fontfamily = "Arial",
+          label_size = 36)
+ggsave(here("figures",
+            "figure_S3.pdf"), units = "mm", width = 549.80416667, height = 309.29791667, device = cairo_pdf, scale = 1)
+```

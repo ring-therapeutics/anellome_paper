@@ -81,8 +81,10 @@ metadata_df <- read.csv(here("data",
                              "RingTx_transfusion1_metadata.csv"), header = TRUE) %>%
   distinct(RING_ID, .keep_all = TRUE)
 
-subjects = c("R02", "R03", "R04", "R05", "R06", "R07", "R08",
-            "R09", "R10", "R11", "R12", "R13", "R14", "R15")
+## We don't look at every single recipient since transmission of Anelloviruses was sparse in some of these
+## subjects.
+subjects = c("R04", "R05", "R06", "R07", "R08",
+            "R09", "R11", "R12", "R13", "R14", "R15")
 orf_category_counts <- data.frame(subject=character(), d_count=integer(), r_count=integer())
 
 rel_abundances_dfs <- foreach(subject = subjects) %do% {
@@ -138,7 +140,7 @@ subject_rabund_plots <- foreach(rel_abundance_df = rel_abundances_dfs) %do% {
 
 subject_rabund_figures <- do.call(grid.arrange, c(subject_rabund_plots, ncol=4))
 cowplot::ggdraw(annotate_figure(subject_rabund_figures,
-                                     left = text_grob("Relative Abundance", size = 18, rot = 90, face = "bold"),
+                                     left = text_grob("Relative Abundance\n(Percent of Anellovirus Reads)", size = 18, rot = 90, face = "bold"),
                                      bottom = text_grob("Days since Transfusion", size = 18, face = "bold"))) +
   theme_fivethirtyeight() +
   theme(plot.background = element_rect(fill = "white"),
@@ -146,6 +148,6 @@ cowplot::ggdraw(annotate_figure(subject_rabund_figures,
         strip.background.x = element_rect(fill = "white"),
         legend.background = element_rect(fill = "white"))
 ggsave(here("figures",
-            "fig3A.pdf"), units = "mm", height = 286, width = 435, device = cairo_pdf, scale = 1)
+            "figure_3.pdf"), units = "mm", height = 286, width = 615, device = cairo_pdf, scale = 1)
 ```
 

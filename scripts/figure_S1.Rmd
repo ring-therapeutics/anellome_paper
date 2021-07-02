@@ -1,0 +1,95 @@
+---
+title: 'Figure S1: Sequence Read Counts'
+author: "Cesar Arze (Ring Therapeutics)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(ggthemes)
+library(gghighlight)
+library(tidyverse)
+library(scales)
+library(RColorBrewer)
+library(foreach)
+library(here)
+library(ggpubr)
+library(cowplot)
+library(here)
+library(yarrr)
+library(Cairo)
+library(gridExtra)
+library(gt)
+library(magrittr)
+library(ggsci)
+```
+
+## Figure S1: Sequence Read Counts
+
+The total number of reads derived from transfusion from donor and recipient samples. Bars in shades of blue represent the total number of reads while bars in shades of red indicate reads identified as anellovirus reads.
+
+```{r load_read_counts}
+raw_reads_df <- read.table(here("data",
+                                "figure_S1",
+                                "raw_read_counts.tsv"), sep = "\t", header = TRUE)
+anello_reads_df <- read.table(here("data",
+                                   "figure_S1",
+                                   "anello_read_counts.tsv"), sep = "\t", header = TRUE)
+
+raw_reads_df %<>% rename(raw_reads = num_seqs, total_raw_bp = sum_len)
+anello_reads_df %<>% rename(anello_reads = num_seqs, total_anello_bp = sum_len)
+
+read_counts_df <- raw_reads_df %>% 
+  select(file, raw_reads, total_raw_bp) %>% 
+  left_join(., anello_reads_df %>% select(file, anello_reads, total_anello_bp), by = c("file" = "file"))
+read_counts_df %<>% rename(sample = file)
+
+read_counts_df %<>% mutate(platform = case_when(grepl("iseq", sample) ~ "iSeq",
+                                                TRUE ~ "NextSeq"))
+read_counts_df %<>% mutate(primers = case_when(grepl("generic", sample) ~ "RCA",
+                                               TRUE ~ "TTV-RCA"))
+read_counts_df %<>% mutate(subject = gsub("[D|T]\\d{2}.*", "", sample))
+read_counts_df %<>% mutate(master_sample = gsub("-.*", "", sample))
+read_counts_df %<>% mutate(display_sample = case_when(grepl("-generic-iseq", sample) ~ gsub("-generic-iseq", "", sample),
+                                                      grepl("-iseq-", sample) ~ gsub("-iseq", "", sample),
+                                                      grepl("-generic-", sample) ~  gsub("-generic", "", sample),
+                                                      TRUE ~ sample))
+```
+
+Generate plot:
+
+```{r plot_read_counts, echo=FALSE}
+
+read_counts_df %>% write.csv("~/Downloads/Table_S5.csv")
+
+## Group all read counts by master-sample
+read_counts_df %>%
+  group_by(master_sample) %>%
+  select(sample, master_sample, display_sample, master_sample, raw_reads, anello_reads, subject, platform, primers) %>% 
+  melt(id.vars = c("sample", "master_sample", "display_sample", "subject", "platform", "primers")) %>%
+  ggplot(aes(x = master_sample, y = value, fill = variable)) + 
+    geom_bar(stat = "identity", position = "dodge") + 
+    theme_fivethirtyeight() +
+    scale_fill_aaas(labels = c("No. of Raw Reads", "No. of Anello Reads")) +
+    scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) +
+    ylab("No. of Reads") +
+    theme(plot.background = element_rect(fill = "white"),
+          panel.background = element_rect(fill = "white"),
+          strip.background.x = element_rect(fill = "white"),
+          legend.background = element_rect(fill = "white"),
+          axis.title.y = element_text(size = 18, face = "bold"),
+          axis.text.x = element_text(size = 15, angle = 90, vjust = -0.5),
+          axis.text.y = element_text(size = 15),
+          strip.text.x = element_text(size = 15, face = "bold"),
+          legend.position = "bottom",
+          legend.title = element_blank(),
+          legend.text= element_text(size = 13)) +
+  facet_wrap(. ~ subject, ncol = 3, scales = "free")
+ggsave(here("manuscript",
+            "figures",
+            "figure_S1_sequencing_yield.pdf"), scale = 1.4)     
+```
+
